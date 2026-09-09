@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coach Message Center</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='34' fill='%232B2B2B'/%3E%3Ccircle cx='90' cy='90' r='58' fill='%23C8102E' stroke='%23fff' stroke-width='6'/%3E%3Ctext x='90' y='108' font-family='Arial' font-weight='800' font-size='58' fill='%23fff' text-anchor='middle'%3ECM%3C/text%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Coach Messages">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --red:#C8102E; --red-deep:#8E0B21; --ink:#1A1A1A; --charcoal:#2B2B2B;
+    --slate:#6B6B6B; --slate-light:#9C9C9C; --paper:#FAFAFA; --card:#FFFFFF;
+    --border:#E5E5E5; --shadow-lg:0 4px 16px rgba(0,0,0,0.08);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; overflow-x:hidden; width:100%; background:var(--paper); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.5;}
+  h1,h2,h3{font-family:"Arial Narrow",Helvetica,Arial,sans-serif; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; color:var(--charcoal); margin:0 0 6px 0;}
+  .topbar{background:var(--charcoal); color:#fff; position:sticky; top:0; z-index:50; box-shadow:var(--shadow-lg); border-bottom:3px solid var(--red);}
+  .topbar-inner{max-width:640px; margin:0 auto; padding:12px 18px; padding-left:calc(18px + env(safe-area-inset-left)); padding-right:calc(18px + env(safe-area-inset-right)); display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-mark{width:34px; height:34px; border-radius:8px; background:var(--red); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; flex-shrink:0;}
+  .brand h1{font-size:15px; color:#fff; margin:0;}
+  .coach-link{background:none; border:1px solid #555; color:#999; font-size:10.5px; padding:5px 10px; border-radius:14px; cursor:pointer; font-family:inherit; text-transform:uppercase; letter-spacing:0.04em;}
+  .coach-link:hover{border-color:var(--red); color:#fff;}
+  .wrap{max-width:640px; margin:0 auto; padding:20px 18px 60px; padding-left:calc(18px + env(safe-area-inset-left)); padding-right:calc(18px + env(safe-area-inset-right));}
+  .card{background:var(--card); border-radius:10px; padding:16px; box-shadow:var(--shadow-lg); border:1px solid var(--border);}
+  .accent-red{border-left:4px solid var(--red);}
+  .accent-charcoal{border-left:4px solid var(--charcoal);}
+  .small{font-size:13.5px; color:var(--slate);}
+  textarea.field{width:100%; border:1.5px solid var(--border); border-radius:6px; padding:10px; font-size:14.5px; font-family:inherit; color:var(--ink); background:#fbfbfb; resize:vertical; min-height:90px;}
+  textarea.field:focus{outline:none; border-color:var(--red); background:#fff;}
+  .send-btn{width:100%; margin-top:10px; background:var(--red); color:#fff; border:none; border-radius:8px; padding:13px; font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; cursor:pointer; font-family:inherit;}
+  .send-btn:hover{background:var(--red-deep);}
+  .send-btn:disabled{background:var(--slate-light); cursor:not-allowed;}
+  #login-panel{max-width:400px; margin:60px auto; padding:0 18px;}
+  .login-field{width:100%; border:1.5px solid var(--border); border-radius:6px; padding:10px; font-size:14px; margin-bottom:10px; font-family:inherit;}
+  .login-btn{width:100%; background:var(--charcoal); color:#fff; border:none; border-radius:8px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;}
+  .msg-row{padding:10px 0; border-bottom:1px solid var(--border);}
+  .msg-row:last-child{border-bottom:none;}
+  .msg-date{color:var(--slate-light); font-size:12px; margin-bottom:3px;}
+  .msg-text{font-size:14px; color:var(--ink);}
+</style>
+</head>
+<body>
+
+<div id="login-panel">
+  <h2 style="text-align:center;">Coach Message Center</h2>
+  <p class="small" style="text-align:center; margin-bottom:20px;">Sign in with your coach account.</p>
+  <input type="email" id="login-email" class="login-field" placeholder="Email">
+  <input type="password" id="login-password" class="login-field" placeholder="Password">
+  <button class="login-btn" onclick="doSignIn()">Sign In</button>
+  <p class="small" id="login-status" style="text-align:center; margin-top:10px;"></p>
+</div>
+
+<div id="main-app" style="display:none;">
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><div class="brand-mark">CM</div><h1>Coach Messages</h1></div>
+      <button class="coach-link" onclick="doSignOut()">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="card accent-red">
+      <h3>Send To Everyone</h3>
+      <p class="small" style="margin-top:4px;">This shows as a banner on every athlete's dashboard until they dismiss it. It also stays in their message history either way.</p>
+      <textarea class="field" id="message-input" style="margin-top:10px;" placeholder="Type your message here..."></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendMessage()">Send To Everyone</button>
+      <p class="small" id="send-status" style="margin-top:8px; text-align:center;"></p>
+    </div>
+
+    <div class="card accent-charcoal" style="margin-top:16px;">
+      <h3>Message History</h3>
+      <div id="message-list" style="margin-top:8px;"><p class="small">Loading...</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var SUPABASE_URL = "https://scjfzzcpiirhlmkamqcg.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_v83BXXAIW3UoMrndPi4tCw_cMoaPbnR";
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  var auth = { user:null, role:null };
+
+  window.doSignIn = async function(){
+    var email = document.getElementById('login-email').value.trim();
+    var password = document.getElementById('login-password').value;
+    var status = document.getElementById('login-status');
+    if (!email || !password){ status.textContent = 'Enter your email and password.'; return; }
+    status.textContent = 'Signing in...';
+    var res = await sb.auth.signInWithPassword({ email: email, password: password });
+    if (res.error){ status.textContent = res.error.message; return; }
+    await loadProfileAndStart();
+  };
+
+  window.doSignOut = async function(){
+    await sb.auth.signOut();
+    location.reload();
+  };
+
+  async function loadProfileAndStart(){
+    var status = document.getElementById('login-status');
+    var sessionRes = await sb.auth.getSession();
+    var user = sessionRes.data.session ? sessionRes.data.session.user : null;
+    if (!user) return;
+    auth.user = user;
+    var profRes = await sb.from('profiles').select('role').eq('id', user.id).single();
+    if (profRes.error || !profRes.data){
+      if (status) status.textContent = 'Profile lookup failed: ' + (profRes.error ? profRes.error.message : 'no matching row');
+      return;
+    }
+    if (profRes.data.role !== 'coach'){
+      if (status) status.textContent = 'This account is not a coach account.';
+      return;
+    }
+    auth.role = profRes.data.role;
+    document.getElementById('login-panel').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+    loadMessages();
+  }
+
+  window.sendMessage = async function(){
+    var input = document.getElementById('message-input');
+    var btn = document.getElementById('send-btn');
+    var status = document.getElementById('send-status');
+    var text = input.value.trim();
+    if (!text){ status.textContent = 'Write something first.'; return; }
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    var res = await sb.from('coach_messages').insert({ message: text });
+    btn.disabled = false;
+    btn.textContent = 'Send To Everyone';
+    if (res.error){ status.textContent = 'Could not send: ' + res.error.message; return; }
+    status.textContent = 'Sent — now visible on everyone\'s dashboard.';
+    input.value = '';
+    loadMessages();
+  };
+
+  async function loadMessages(){
+    var list = document.getElementById('message-list');
+    var res = await sb.from('coach_messages').select('message,created_at').order('created_at', {ascending:false}).limit(50);
+    if (res.error){ list.innerHTML = '<p class="small">Could not load messages: ' + res.error.message + '</p>'; return; }
+    if (!res.data.length){ list.innerHTML = '<p class="small">No messages sent yet.</p>'; return; }
+    var html = '';
+    res.data.forEach(function(m){
+      var d = new Date(m.created_at);
+      html += '<div class="msg-row"><p class="msg-date">' + d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + '</p><p class="msg-text">' + m.message + '</p></div>';
+    });
+    list.innerHTML = html;
+  }
+
+  sb.auth.getSession().then(function(res){
+    if (res.data.session) loadProfileAndStart();
+  });
+</script>
+
+</body>
+</html>
